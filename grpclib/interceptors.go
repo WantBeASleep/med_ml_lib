@@ -2,6 +2,7 @@ package grpclib
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/WantBeASleep/goooool/ctxlib"
@@ -46,6 +47,23 @@ func ServerCallLoggerInterceptor(
 	ctx = ctxlib.PublicSet(ctx, methodKey, info.FullMethod)
 	slog.InfoContext(ctx, "Server call")
 
+	return handler(ctx, req)
+}
+
+func ServerCallPanicRecoverInterceptor(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (resp any, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			resp = nil
+			
+			recoverErr := fmt.Errorf("recovered panic: %w", err)
+			err = status.Error(codes.Internal, recoverErr.Error())
+		}
+	}()
 	return handler(ctx, req)
 }
 
