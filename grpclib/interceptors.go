@@ -59,9 +59,7 @@ func ServerCallPanicRecoverInterceptor(
 	defer func() {
 		if r := recover(); r != nil {
 			resp = nil
-
-			recoverErr := fmt.Errorf("recovered panic: %w", err)
-			err = status.Error(codes.Internal, recoverErr.Error())
+			err = status.Error(codes.Internal, fmt.Sprintf("recovered panic: %v", r))
 		}
 	}()
 	return handler(ctx, req)
