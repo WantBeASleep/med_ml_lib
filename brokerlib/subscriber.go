@@ -4,8 +4,9 @@ package brokerlib
 import (
 	"context"
 	"fmt"
-	"github.com/WantBeASleep/goooool/ctxlib"
 	"log/slog"
+
+	"github.com/WantBeASleep/goooool/ctxlib"
 
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"

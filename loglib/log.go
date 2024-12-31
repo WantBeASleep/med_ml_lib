@@ -35,7 +35,13 @@ func WithFileOutput(path string) LopOption {
 func WithDevEnv() LopOption {
 	return logOption(func(c *config) {
 		c.dest = os.Stdout
-		c.level = slog.LevelInfo
+		c.level = slog.LevelDebug
+	})
+}
+
+func WithDebugLog() LopOption {
+	return logOption(func(c *config) {
+		c.level = slog.LevelDebug
 	})
 }
 
