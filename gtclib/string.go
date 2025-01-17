@@ -6,14 +6,6 @@ type _string struct{}
 
 var String _string
 
-func (_string) ValueToPointer(p string) *string {
-	if p == "" {
-		return nil
-	}
-
-	return &p
-}
-
 func (_string) PointerToSql(p *string) sql.NullString {
 	if p == nil {
 		return sql.NullString{}
