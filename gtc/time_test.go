@@ -1,11 +1,11 @@
-package gtclib_test
+package gtc_test
 
 import (
 	"database/sql"
 	"testing"
 	"time"
 
-	"github.com/WantBeASleep/goooool/gtclib"
+	"github.com/WantBeASleep/med_ml_lib/gtc"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,7 +28,7 @@ func TestPointerToSql_Time(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := gtclib.Time.PointerToSql(tt.value)
+			result := gtc.Time.PointerToSql(tt.value)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -38,7 +38,7 @@ func TestSqlToPointer_Time(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now()
-	
+
 	tests := []struct {
 		name     string
 		value    sql.NullTime
@@ -53,7 +53,7 @@ func TestSqlToPointer_Time(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := gtclib.Time.SqlToPointer(tt.value)
+			result := gtc.Time.SqlToPointer(tt.value)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

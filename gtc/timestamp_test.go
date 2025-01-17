@@ -1,10 +1,10 @@
-package gtclib_test
+package gtc_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/WantBeASleep/goooool/gtclib"
+	"github.com/WantBeASleep/med_ml_lib/gtc"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -28,7 +28,7 @@ func TestTimePointerToPointer(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := gtclib.Timestamp.TimePointerToPointer(tt.value)
+			result := gtc.Timestamp.TimePointerToPointer(tt.value)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -54,7 +54,7 @@ func TestPointerToTimePointer(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := gtclib.Timestamp.PointerToTimePointer(tt.value)
+			result := gtc.Timestamp.PointerToTimePointer(tt.value)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

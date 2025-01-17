@@ -13,3 +13,13 @@ func Flatten2DArray[T any](slice [][]T) []T {
 
 	return res
 }
+
+
+func PackSlice[T any](slice []T) []any {
+	res := make([]any, 0, len(slice))
+	for _, v := range slice {
+		res = append(res, any(v))
+	}
+
+	return res
+}

@@ -1,10 +1,11 @@
-package gtclib_test
+package gtc_test
 
 import (
 	"testing"
 
-	"github.com/WantBeASleep/goooool/gtclib" // Используем правильный импорт
-	"github.com/stretchr/testify/assert"     // Импортируем библиотеку testify
+	"github.com/WantBeASleep/med_ml_lib/gtc"
+	// Используем правильный импорт
+	"github.com/stretchr/testify/assert" // Импортируем библиотеку testify
 )
 
 func TestValueToPointer(t *testing.T) {
@@ -23,7 +24,7 @@ func TestValueToPointer(t *testing.T) {
 		tt := tt // создаем новую переменную для захвата цикла
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel() // Запуск тестов параллельно
-			result := gtclib.ValueToPointer(tt.value)
+			result := gtc.ValueToPointer(tt.value)
 			assert.Equal(t, tt.expected, result) // Используем assert для утверждения
 		})
 	}
@@ -44,7 +45,7 @@ func TestValueToPointerZeroValue(t *testing.T) {
 		tt := tt // создаем новую переменную для захвата цикла
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel() // Запуск тестов параллельно
-			result := gtclib.ValueToPointerZeroValue(tt.value)
+			result := gtc.ValueToPointerZeroValue(tt.value)
 			assert.Equal(t, tt.expected, result) // Используем assert для утверждения
 		})
 	}

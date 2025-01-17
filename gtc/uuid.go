@@ -1,4 +1,4 @@
-package gtclib
+package gtc
 
 import "github.com/google/uuid"
 

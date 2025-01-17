@@ -1,4 +1,4 @@
-package gtclib
+package gtc
 
 import "database/sql"
 

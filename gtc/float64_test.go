@@ -1,10 +1,10 @@
-package gtclib_test
+package gtc_test
 
 import (
 	"database/sql"
 	"testing"
 
-	"github.com/WantBeASleep/goooool/gtclib"
+	"github.com/WantBeASleep/med_ml_lib/gtc"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,7 +24,7 @@ func TestPointerToSql_Float64(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := gtclib.Float64.PointerToSql(tt.value)
+			result := gtc.Float64.PointerToSql(tt.value)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -46,7 +46,7 @@ func TestSqlToPointer_Float64(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := gtclib.Float64.SqlToPointer(tt.value)
+			result := gtc.Float64.SqlToPointer(tt.value)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

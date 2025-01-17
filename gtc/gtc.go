@@ -1,4 +1,4 @@
-package gtclib
+package gtc
 
 func ValueToPointer[T any](v T) *T {
 	return &v

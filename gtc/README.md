@@ -1,0 +1,1 @@
+# gtc - golang type conventer

@@ -1,9 +1,9 @@
-package gtclib_test
+package gtc_test
 
 import (
 	"testing"
 
-	"github.com/WantBeASleep/goooool/gtclib"
+	"github.com/WantBeASleep/med_ml_lib/gtc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +25,7 @@ func TestMustStringPointerToPointer_Success(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := gtclib.Uuid.MustStringPointerToPointer(tt.value)
+			result := gtc.Uuid.MustStringPointerToPointer(tt.value)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -33,10 +33,10 @@ func TestMustStringPointerToPointer_Success(t *testing.T) {
 
 func TestTestMustStringPointerToPointer_Panic(t *testing.T) {
 	t.Parallel()
-	
+
 	invalidUUIDString := "yare broke nigga!"
 
-	assert.Panics(t, func() {gtclib.Uuid.MustStringPointerToPointer(&invalidUUIDString)})
+	assert.Panics(t, func() { gtc.Uuid.MustStringPointerToPointer(&invalidUUIDString) })
 }
 
 func uuidPointer(uuid uuid.UUID) *uuid.UUID {
