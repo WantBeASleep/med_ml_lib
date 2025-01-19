@@ -25,19 +25,19 @@ func AuthServerCall(
 ) (resp any, err error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		slog.InfoContext(ctx, "Info call w/o x-request_id", slog.String("called method", info.FullMethod))
+		slog.InfoContext(ctx, "Server call w/o x-request_id", slog.String("called method", info.FullMethod))
 		return nil, status.Error(codes.Unauthenticated, "x-request_id required")
 	}
 
 	requestIDArr := md.Get(requestIDHeader)
 	if len(requestIDArr) != 1 {
-		slog.InfoContext(ctx, "Info call w/o x-request_id", slog.String("called method", info.FullMethod))
+		slog.InfoContext(ctx, "Server call w/o x-request_id", slog.String("called method", info.FullMethod))
 		return nil, status.Error(codes.Unauthenticated, "x-request_id required")
 	}
 
 	requestID, err := uuid.Parse(requestIDArr[0])
 	if err != nil {
-		slog.InfoContext(ctx, "Info call w/o x-request_id", slog.String("called method", info.FullMethod))
+		slog.InfoContext(ctx, "Server call w/o x-request_id", slog.String("called method", info.FullMethod))
 		return nil, status.Error(codes.Unauthenticated, "x-request_id invalid")
 	}
 

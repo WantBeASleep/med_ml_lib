@@ -38,7 +38,7 @@ func WithFields(ctx context.Context, values map[string]any) context.Context {
 	for k, v := range values {
 		ctxvalues[k] = v
 	}
-	return context.WithValue(ctx, key, values) // несмотря на то что map - ссылочная, надо обновить поле
+	return context.WithValue(ctx, key, ctxvalues) // несмотря на то что map - ссылочная, надо обновить поле
 }
 
 type config struct {

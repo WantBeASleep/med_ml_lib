@@ -1,4 +1,4 @@
-package daolib
+package dao
 
 import (
 	"database/sql"

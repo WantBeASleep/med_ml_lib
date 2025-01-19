@@ -46,3 +46,28 @@ func WithLocalPreset() logOption {
 		c.level = slog.LevelDebug
 	})
 }
+
+// accept "prod", "staging", "local"
+func WithEnv() logOption {
+	return logOption(func(c *config) {
+		env, ok := os.LookupEnv("APP_ENV")
+		if !ok {
+			WithProdPreset().applyOpt(c)
+			return
+		}
+
+		switch env {
+		case "prod":
+			WithProdPreset().applyOpt(c)
+
+		case "staging":
+			WithStagePreset().applyOpt(c)
+
+		case "local":
+			WithLocalPreset().applyOpt(c)
+
+		default:
+			WithProdPreset().applyOpt(c)
+		}
+	})
+}
