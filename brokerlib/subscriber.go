@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/WantBeASleep/goooool/ctxlib"
+	// TODO: этот клиент kafka под перепись
+	// Нужно передавать функции которые срабатывают перед обработкой сообщения, а не хардкодить их
+	"github.com/WantBeASleep/med_ml_lib/auth"
+	"github.com/WantBeASleep/med_ml_lib/log"
 
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
@@ -39,9 +42,16 @@ func (*handler) Cleanup(sarama.ConsumerGroupSession) error { return nil }
 func (h *handler) ConsumeClaim(s sarama.ConsumerGroupSession, c sarama.ConsumerGroupClaim) error {
 	for msg := range c.Messages() {
 		reqID := uuid.New()
-		ctx := ctxlib.PublicSet(s.Context(), "x-request_id", reqID.String())
-		ctx = ctxlib.PublicSet(ctx, "x-request_kind", "broker event")
-		ctx = ctxlib.PublicSet(ctx, "x-event_topic", c.Topic())
+		ctx := auth.WithRequestID(s.Context(), reqID)
+
+		// TODO: подумать над структурой обсервинга
+		// вопрос - насколько ок, прокидывать в логи напрямую эти заголовки в виде строк
+		// кастом логи в моменте это нормально, но внутри одной из библиотек - это залупа
+
+		ctx = log.WithFields(ctx, map[string]any{
+			"x-request_kind": "broker event",
+			"x-event_topic":  c.Topic(),
+		})
 
 		slog.InfoContext(ctx, "New event request")
 

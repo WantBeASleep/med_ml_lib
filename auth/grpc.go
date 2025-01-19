@@ -11,12 +11,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type key string
-
 // TODO: описать в доке всю эту схемку с аутентификацией
 const (
-	requestIDKey key    = "x-request_id"
-	methodHeader    string = "x-method"
+	// headers
+	requestIDHeader = "x-request_id"
 )
 
 func AuthServerCall(
@@ -27,27 +25,29 @@ func AuthServerCall(
 ) (resp any, err error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		slog.InfoContext(ctx, "Info call w/o x-request_id", slog.String(methodHeader, info.FullMethod))
+		slog.InfoContext(ctx, "Info call w/o x-request_id", slog.String("called method", info.FullMethod))
 		return nil, status.Error(codes.Unauthenticated, "x-request_id required")
 	}
 
-	requestIDArr := md.Get(string(requestIDKey))
+	requestIDArr := md.Get(requestIDHeader)
 	if len(requestIDArr) != 1 {
-		slog.InfoContext(ctx, "Info call w/o x-request_id", slog.String(methodHeader, info.FullMethod))
+		slog.InfoContext(ctx, "Info call w/o x-request_id", slog.String("called method", info.FullMethod))
 		return nil, status.Error(codes.Unauthenticated, "x-request_id required")
 	}
 
 	requestID, err := uuid.Parse(requestIDArr[0])
 	if err != nil {
-		slog.InfoContext(ctx, "Info call w/o x-request_id", slog.String(methodHeader, info.FullMethod))
+		slog.InfoContext(ctx, "Info call w/o x-request_id", slog.String("called method", info.FullMethod))
 		return nil, status.Error(codes.Unauthenticated, "x-request_id invalid")
 	}
 
-	ctx = context.WithValue(ctx, requestIDKey, requestID.String())
+	ctx = withValue(ctx, request_id, requestID.String())
 
 	return handler(ctx, req)
 }
 
+// возьмет информацию из auth ctx.
+// если нет нужных ключей спаникует
 func AuthEnrichClientCall(
 	ctx context.Context,
 	method string,
@@ -57,7 +57,7 @@ func AuthEnrichClientCall(
 	opts ...grpc.CallOption,
 ) error {
 	md := metadata.New(map[string]string{
-		string(requestIDKey): ctx.Value(requestIDKey).(string),
+		requestIDHeader: ctx.Value(request_id).(string),
 	})
 
 	ctx = metadata.NewOutgoingContext(ctx, md)
