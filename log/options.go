@@ -23,7 +23,7 @@ func (o logOption) applyOpt(c *config) {
 func WithProdPreset() LogOption {
 	return logOption(func(c *config) {
 		c.logger = zerolog.New(os.Stdout)
-		c.level = slog.LevelError
+		c.level = slog.LevelInfo
 	})
 }
 

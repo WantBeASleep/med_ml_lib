@@ -1,6 +1,6 @@
 module github.com/WantBeASleep/med_ml_lib
 
-go 1.23.4
+go 1.24.0
 
 require (
 	github.com/IBM/sarama v1.43.3
