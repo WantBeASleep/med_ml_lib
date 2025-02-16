@@ -57,7 +57,7 @@ func AuthEnrichClientCall(
 	opts ...grpc.CallOption,
 ) error {
 	md := metadata.New(map[string]string{
-		requestIDHeader: ctx.Value(request_id).(string),
+		requestIDHeader: getValue(ctx, request_id).(string),
 	})
 
 	ctx = metadata.NewOutgoingContext(ctx, md)
