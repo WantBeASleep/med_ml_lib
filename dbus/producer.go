@@ -34,12 +34,12 @@ func NewProducer[T proto.Message](
 	saramaProducer sarama.SyncProducer,
 	topic string,
 	middlewares ...producerMiddlewars[T],
-) (Producer[T], error) {
+) Producer[T] {
 	return &producer[T]{
 		producer:    saramaProducer,
 		topic:       topic,
 		middlewares: middlewares,
-	}, nil
+	}
 }
 
 // конфиг для отправки сообщения
