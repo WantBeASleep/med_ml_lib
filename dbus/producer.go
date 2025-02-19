@@ -30,12 +30,11 @@ type producerMiddlewars[T proto.Message] func(
 	cfg *OptionalSendCfg,
 ) error
 
-func NewProducer[T proto.Message](addr []string, topic string, middlewares ...producerMiddlewars[T]) (Producer[T], error) {
-	saramaProducer, err := sarama.NewSyncProducer(addr, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create new sync producer: %w", err)
-	}
-
+func NewProducer[T proto.Message](
+	saramaProducer sarama.SyncProducer,
+	topic string,
+	middlewares ...producerMiddlewars[T],
+) (Producer[T], error) {
 	return &producer[T]{
 		producer:    saramaProducer,
 		topic:       topic,
