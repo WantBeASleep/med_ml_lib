@@ -41,7 +41,7 @@ type subscriberMiddlewars[T proto.Message] func(ctx context.Context, stats Event
 
 type handler[T proto.Message] struct {
 	// десереализованное сообщение
-	consumer func(ctx context.Context, event T) error
+	consumer Consumer[T]
 
 	// будут вызваны при инициализации подключения
 	initFuncs []initFunc
@@ -50,11 +50,15 @@ type handler[T proto.Message] struct {
 	preConsumeFuncs []subscriberMiddlewars[T]
 }
 
+type Consumer[T proto.Message] interface {
+	Consume(ctx context.Context, event T) error
+}
+
 func NewGroupSubscriber[T proto.Message](
 	topic string,
 	hosts []string,
 	groupID string,
-	consumer func(ctx context.Context, event T) error,
+	consumer Consumer[T],
 	options ...SubscriberOptions[T],
 ) Subscriber {
 	h := &handler[T]{consumer: consumer}
@@ -114,7 +118,7 @@ func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sar
 			}
 		}
 
-		if err := h.consumer(ctx, event); err != nil {
+		if err := h.consumer.Consume(ctx, event); err != nil {
 			return fmt.Errorf("consume event: %w", err)
 		}
 
