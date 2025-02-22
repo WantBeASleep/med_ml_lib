@@ -3,6 +3,7 @@ package dbus
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/IBM/sarama"
 	"google.golang.org/protobuf/proto"
@@ -36,18 +37,20 @@ type EventStats[T proto.Message] struct {
 	Offset    int
 }
 
-type initFunc func(ctx context.Context, stats SubscriberInitConnectionStats) error
-type subscriberMiddlewars[T proto.Message] func(ctx context.Context, stats EventStats[T]) (context.Context, error)
+type subscriberInitMiddlewares func(ctx context.Context, stats SubscriberInitConnectionStats) error
+type subscriberMiddlewares func(ctx context.Context, stats EventStats[proto.Message]) (context.Context, error)
+type subscriberTypeMiddlewares[T proto.Message] func(ctx context.Context, stats EventStats[T]) (context.Context, error)
 
 type handler[T proto.Message] struct {
 	// десереализованное сообщение
 	consumer Consumer[T]
 
 	// будут вызваны при инициализации подключения
-	initFuncs []initFunc
+	initMiddlewars []subscriberInitMiddlewares
 
 	// будут вызваны при получении сообщения
-	preConsumeFuncs []subscriberMiddlewars[T]
+	middlewares    []subscriberMiddlewares
+	typeMiddlewars []subscriberTypeMiddlewares[T]
 }
 
 type Consumer[T proto.Message] interface {
@@ -78,16 +81,23 @@ func NewGroupSubscriber[T proto.Message](
 func (*handler[T]) Setup(sarama.ConsumerGroupSession) error   { return nil }
 func (*handler[T]) Cleanup(sarama.ConsumerGroupSession) error { return nil }
 
-func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.ErrorContext(session.Context(), "panic in consumer group", slog.Any("error", r))
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
+
 	subStats := SubscriberInitConnectionStats{
 		Topic:         claim.Topic(),
 		Partition:     int(claim.Partition()),
 		InitialOffset: int(claim.InitialOffset()),
 	}
 
-	for _, initFunc := range h.initFuncs {
-		if err := initFunc(session.Context(), subStats); err != nil {
-			return fmt.Errorf("run init funcs: %w", err)
+	for _, mdlwr := range h.initMiddlewars {
+		if err := mdlwr(session.Context(), subStats); err != nil {
+			return fmt.Errorf("run init middlewares: %w", err)
 		}
 	}
 
@@ -110,11 +120,26 @@ func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sar
 		}
 
 		ctx := session.Context()
-		for _, preConsumeFunc := range h.preConsumeFuncs {
+		for _, mdlwr := range h.typeMiddlewars {
 			var err error
-			ctx, err = preConsumeFunc(ctx, eventStats)
+			ctx, err = mdlwr(ctx, eventStats)
 			if err != nil {
-				return fmt.Errorf("run preConsumeFuncs: %w", err)
+				return fmt.Errorf("run type middlewares: %w", err)
+			}
+		}
+
+		for _, mdlwr := range h.middlewares {
+			var err error
+			ctx, err = mdlwr(ctx, EventStats[proto.Message]{
+				Topic:     eventStats.Topic,
+				Key:       eventStats.Key,
+				Value:     eventStats.Value,
+				Partition: eventStats.Partition,
+				Offset:    eventStats.Offset,
+				Headers:   eventStats.Headers,
+			})
+			if err != nil {
+				return fmt.Errorf("run middlewares: %w", err)
 			}
 		}
 

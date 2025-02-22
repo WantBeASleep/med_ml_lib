@@ -7,14 +7,35 @@ import (
 // ---- Subscriber options ----
 type SubscriberOptions[T proto.Message] func(*handler[T])
 
-func WithInitFunc[T proto.Message](initFuncs ...initFunc) SubscriberOptions[T] {
+func WithInitMiddlewares[T proto.Message](initMiddlewares ...subscriberInitMiddlewares) SubscriberOptions[T] {
 	return func(h *handler[T]) {
-		h.initFuncs = append(h.initFuncs, initFuncs...)
+		h.initMiddlewars = append(h.initMiddlewars, initMiddlewares...)
 	}
 }
 
-func WithSubscriberMiddlewars[T proto.Message](preConsumeFuncs ...subscriberMiddlewars[T]) SubscriberOptions[T] {
+func WithSubscriberTypeMiddlewares[T proto.Message](typeMiddlewares ...subscriberTypeMiddlewares[T]) SubscriberOptions[T] {
 	return func(h *handler[T]) {
-		h.preConsumeFuncs = append(h.preConsumeFuncs, preConsumeFuncs...)
+		h.typeMiddlewars = append(h.typeMiddlewars, typeMiddlewares...)
+	}
+}
+
+func WithSubscriberMiddlewares[T proto.Message](middlewares ...subscriberMiddlewares) SubscriberOptions[T] {
+	return func(h *handler[T]) {
+		h.middlewares = append(h.middlewares, middlewares...)
+	}
+}
+
+// ---- Producer options ----
+type ProducerOptions[T proto.Message] func(*producer[T])
+
+func WithProducerMiddlewares[T proto.Message](middlewares ...producerMiddlewares) ProducerOptions[T] {
+	return func(p *producer[T]) {
+		p.middlewares = append(p.middlewares, middlewares...)
+	}
+}
+
+func WithProducerTypeMiddlewares[T proto.Message](typeMiddlewares ...producerTypeMiddlewares[T]) ProducerOptions[T] {
+	return func(p *producer[T]) {
+		p.typeMiddlewares = append(p.typeMiddlewares, typeMiddlewares...)
 	}
 }
