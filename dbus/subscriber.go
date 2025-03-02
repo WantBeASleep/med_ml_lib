@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"reflect"
+	"runtime/debug"
 
 	"github.com/IBM/sarama"
 	"google.golang.org/protobuf/proto"
@@ -84,8 +86,10 @@ func (*handler[T]) Cleanup(sarama.ConsumerGroupSession) error { return nil }
 func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			slog.ErrorContext(session.Context(), "panic in consumer group", slog.Any("error", r))
-			err = fmt.Errorf("panic: %v", r)
+			slog.ErrorContext(session.Context(), "panic in consumer group", slog.Any("error", r), slog.String("trace", string(debug.Stack())))
+			// TODO: вернуть, когда добавим все обработки паник + k8s для переподъема подов
+			// err = fmt.Errorf("panic: %v", r)
+			err = nil
 		}
 	}()
 
@@ -103,12 +107,14 @@ func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sar
 
 	for msg := range claim.Messages() {
 		// T - proto.Message, дженерик изначально будет от указателя
-		var event T
+		var typeof T
+		event := reflect.New(reflect.TypeOf(typeof).Elem()).Interface().(T)
 		if err := proto.Unmarshal(msg.Value, event); err != nil {
 			return fmt.Errorf("unmarshal event to %T: %w", event, err)
 		}
 
 		eventStats := EventStats[T]{
+			Headers:   map[string]string{},
 			Topic:     msg.Topic,
 			Key:       string(msg.Key),
 			Value:     event,
@@ -144,7 +150,9 @@ func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sar
 		}
 
 		if err := h.consumer.Consume(ctx, event); err != nil {
-			return fmt.Errorf("consume event: %w", err)
+			// TODO: вернуть, когда добавим все обработки паник + k8s для переподъема подов
+			// return fmt.Errorf("consume event: %w", err)
+			slog.ErrorContext(ctx, "consume event", slog.Any("error", err))
 		}
 
 		session.MarkMessage(msg, "")
@@ -155,6 +163,8 @@ func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sar
 }
 
 func (s *subscriber[T]) Start(ctx context.Context) error {
+	// блять, а поч я так сделал, клиент то передавать надо, о боже
+	// но тут не так критично, ибо 1 консьюмер группа = 1 топик 99%
 	consumer, err := sarama.NewConsumerGroup(s.hosts, s.groupID, nil)
 	if err != nil {
 		return fmt.Errorf("create new group: %w", err)
