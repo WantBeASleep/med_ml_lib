@@ -3,6 +3,9 @@ package dbus
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"reflect"
+	"runtime/debug"
 
 	"github.com/IBM/sarama"
 	"google.golang.org/protobuf/proto"
@@ -36,18 +39,20 @@ type EventStats[T proto.Message] struct {
 	Offset    int
 }
 
-type initFunc func(ctx context.Context, stats SubscriberInitConnectionStats) error
-type subscriberMiddlewars[T proto.Message] func(ctx context.Context, stats EventStats[T]) (context.Context, error)
+type subscriberInitMiddlewares func(ctx context.Context, stats SubscriberInitConnectionStats) error
+type subscriberMiddlewares func(ctx context.Context, stats EventStats[proto.Message]) (context.Context, error)
+type subscriberTypeMiddlewares[T proto.Message] func(ctx context.Context, stats EventStats[T]) (context.Context, error)
 
 type handler[T proto.Message] struct {
 	// десереализованное сообщение
 	consumer Consumer[T]
 
 	// будут вызваны при инициализации подключения
-	initFuncs []initFunc
+	initMiddlewars []subscriberInitMiddlewares
 
 	// будут вызваны при получении сообщения
-	preConsumeFuncs []subscriberMiddlewars[T]
+	middlewares    []subscriberMiddlewares
+	typeMiddlewars []subscriberTypeMiddlewares[T]
 }
 
 type Consumer[T proto.Message] interface {
@@ -78,27 +83,38 @@ func NewGroupSubscriber[T proto.Message](
 func (*handler[T]) Setup(sarama.ConsumerGroupSession) error   { return nil }
 func (*handler[T]) Cleanup(sarama.ConsumerGroupSession) error { return nil }
 
-func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.ErrorContext(session.Context(), "panic in consumer group", slog.Any("error", r), slog.String("trace", string(debug.Stack())))
+			// TODO: вернуть, когда добавим все обработки паник + k8s для переподъема подов
+			// err = fmt.Errorf("panic: %v", r)
+			err = nil
+		}
+	}()
+
 	subStats := SubscriberInitConnectionStats{
 		Topic:         claim.Topic(),
 		Partition:     int(claim.Partition()),
 		InitialOffset: int(claim.InitialOffset()),
 	}
 
-	for _, initFunc := range h.initFuncs {
-		if err := initFunc(session.Context(), subStats); err != nil {
-			return fmt.Errorf("run init funcs: %w", err)
+	for _, mdlwr := range h.initMiddlewars {
+		if err := mdlwr(session.Context(), subStats); err != nil {
+			return fmt.Errorf("run init middlewares: %w", err)
 		}
 	}
 
 	for msg := range claim.Messages() {
 		// T - proto.Message, дженерик изначально будет от указателя
-		var event T
+		var typeof T
+		event := reflect.New(reflect.TypeOf(typeof).Elem()).Interface().(T)
 		if err := proto.Unmarshal(msg.Value, event); err != nil {
 			return fmt.Errorf("unmarshal event to %T: %w", event, err)
 		}
 
 		eventStats := EventStats[T]{
+			Headers:   map[string]string{},
 			Topic:     msg.Topic,
 			Key:       string(msg.Key),
 			Value:     event,
@@ -110,16 +126,33 @@ func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sar
 		}
 
 		ctx := session.Context()
-		for _, preConsumeFunc := range h.preConsumeFuncs {
+		for _, mdlwr := range h.typeMiddlewars {
 			var err error
-			ctx, err = preConsumeFunc(ctx, eventStats)
+			ctx, err = mdlwr(ctx, eventStats)
 			if err != nil {
-				return fmt.Errorf("run preConsumeFuncs: %w", err)
+				return fmt.Errorf("run type middlewares: %w", err)
+			}
+		}
+
+		for _, mdlwr := range h.middlewares {
+			var err error
+			ctx, err = mdlwr(ctx, EventStats[proto.Message]{
+				Topic:     eventStats.Topic,
+				Key:       eventStats.Key,
+				Value:     eventStats.Value,
+				Partition: eventStats.Partition,
+				Offset:    eventStats.Offset,
+				Headers:   eventStats.Headers,
+			})
+			if err != nil {
+				return fmt.Errorf("run middlewares: %w", err)
 			}
 		}
 
 		if err := h.consumer.Consume(ctx, event); err != nil {
-			return fmt.Errorf("consume event: %w", err)
+			// TODO: вернуть, когда добавим все обработки паник + k8s для переподъема подов
+			// return fmt.Errorf("consume event: %w", err)
+			slog.ErrorContext(ctx, "consume event", slog.Any("error", err))
 		}
 
 		session.MarkMessage(msg, "")
@@ -130,6 +163,8 @@ func (h *handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sar
 }
 
 func (s *subscriber[T]) Start(ctx context.Context) error {
+	// блять, а поч я так сделал, клиент то передавать надо, о боже
+	// но тут не так критично, ибо 1 консьюмер группа = 1 топик 99%
 	consumer, err := sarama.NewConsumerGroup(s.hosts, s.groupID, nil)
 	if err != nil {
 		return fmt.Errorf("create new group: %w", err)

@@ -20,26 +20,39 @@ type producer[T proto.Message] struct {
 	topic string
 
 	// будут вызваны при отправке сообщения
-	middlewares []producerMiddlewars[T]
+	middlewares     []producerMiddlewares
+	typeMiddlewares []producerTypeMiddlewares[T]
 }
 
-type producerMiddlewars[T proto.Message] func(
+type producerTypeMiddlewares[T proto.Message] func(
 	ctx context.Context,
 	topic string,
 	msg T,
 	cfg *OptionalSendCfg,
 ) error
 
+type producerMiddlewares func(
+	ctx context.Context,
+	topic string,
+	msg proto.Message,
+	cfg *OptionalSendCfg,
+) error
+
 func NewProducer[T proto.Message](
 	saramaProducer sarama.SyncProducer,
 	topic string,
-	middlewares ...producerMiddlewars[T],
+	options ...ProducerOptions[T],
 ) Producer[T] {
-	return &producer[T]{
-		producer:    saramaProducer,
-		topic:       topic,
-		middlewares: middlewares,
+	p := &producer[T]{
+		producer: saramaProducer,
+		topic:    topic,
 	}
+
+	for _, option := range options {
+		option(p)
+	}
+
+	return p
 }
 
 // конфиг для отправки сообщения
@@ -79,6 +92,12 @@ func (p *producer[T]) Send(ctx context.Context, msg T) error {
 	}
 
 	cfg := &OptionalSendCfg{}
+	for _, mdlwr := range p.typeMiddlewares {
+		if err := mdlwr(ctx, p.topic, msg, cfg); err != nil {
+			return fmt.Errorf("run middleware: %w", err)
+		}
+	}
+
 	for _, mdlwr := range p.middlewares {
 		if err := mdlwr(ctx, p.topic, msg, cfg); err != nil {
 			return fmt.Errorf("run middleware: %w", err)
